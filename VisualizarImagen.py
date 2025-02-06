@@ -83,7 +83,7 @@ while True:
 
         # Verificar somnolencia si el EAR está por debajo del umbral
         if ear < thresh:
-            contador_somnolencia += 5
+            contador_somnolencia += 5 #Modificar el umbral de somnolencia | 5 Es mucho
             if contador_somnolencia >= frame_check:
                 # Dibujar alerta en pantalla
                 cv2.putText(frame, "!ALERTA DE SOMNOLENCIA!", (50, 50),

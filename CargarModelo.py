@@ -1,26 +1,18 @@
 import face_recognition
 import os
-import pickle
 import numpy as np
-from sklearn.svm import SVC
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 
-# Cargar modelo existente y lista de carpetas entrenadas si existen
-try:
-    with open("Modelos/modelo_svm.pkl", "rb") as archivo_svm:
-        clf = pickle.load(archivo_svm)
-    with open("Modelos/entrenados.pkl", "rb") as archivo_entrenados:
-        carpetas_entrenadas = pickle.load(archivo_entrenados)
-except FileNotFoundError:
-    clf = SVC(gamma='scale', probability=True)
-    carpetas_entrenadas = []
-
-# Crear listas para los nuevos embeddings y nombres
+# Crear listas para los embeddings y los nombres
 imagenes = []
 nombres = []
 
-# Recorre las carpetas dentro de 'dataset' que aún no han sido entrenadas
+# Recorre las carpetas dentro de 'dataset' (cada carpeta es una persona)
 for carpeta in os.listdir("dataset"):
-    if os.path.isdir(f"dataset/{carpeta}") and carpeta not in carpetas_entrenadas:
+    if os.path.isdir(f"dataset/{carpeta}"):
         for archivo in os.listdir(f"dataset/{carpeta}"):
             if archivo.endswith(".jpg"):
                 imagen_path = os.path.join(f"dataset/{carpeta}", archivo)
@@ -31,20 +23,73 @@ for carpeta in os.listdir("dataset"):
                     nombres.append(carpeta)
                 except IndexError:
                     print(f"Rostro no encontrado en {imagen_path}, omitiendo imagen.")
-                    continue
-        carpetas_entrenadas.append(carpeta)  # Marcar carpeta como entrenada
 
-# Solo actualizar el modelo si hay nuevas imágenes
-if imagenes:
-    clf.fit(imagenes, nombres)
+# Convertir listas a arrays de NumPy
+X = np.array(imagenes)
+y_labels = list(set(nombres))
+y = np.array([y_labels.index(name) for name in nombres])
 
-    # Guardar el modelo y la lista de carpetas entrenadas
-    with open("Modelos/modelo_svm.pkl", "wb") as archivo_svm:
-        pickle.dump(clf, archivo_svm)
+# Convertir a tensores de PyTorch
+X_tensor = torch.tensor(X, dtype=torch.float32)
+y_tensor = torch.tensor(y, dtype=torch.long)
 
-    with open("Modelos/entrenados.pkl", "wb") as archivo_entrenados:
-        pickle.dump(carpetas_entrenadas, archivo_entrenados)
+# Crear DataLoader
+dataset = TensorDataset(X_tensor, y_tensor)
+train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-    print("Modelo actualizado y guardado como modelo_svm.pkl")
-else:
-    print("No hay nuevas carpetas para entrenar.")
+# Definir la red neuronal
+class FaceRecognitionNN(nn.Module):
+    def __init__(self):
+        super(FaceRecognitionNN, self).__init__()
+        self.fc1 = nn.Linear(128, 256)  # Entrada de 128 (embedding de cara) a 256
+        self.dropout1 = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(256, 128)  # Capa intermedia de 256 a 128
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(128, len(y_labels))  # Capa de salida con número de clases
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = self.dropout1(x)
+        x = torch.relu(self.fc2(x))
+        x = self.dropout2(x)
+        x = self.fc3(x)
+        return x
+
+# Instanciar el modelo
+model = FaceRecognitionNN()
+
+# Definir el optimizador y la función de pérdida
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+criterion = nn.CrossEntropyLoss()
+
+# Entrenar el modelo
+epochs = 20
+for epoch in range(epochs):
+    model.train()  # Configurar el modelo en modo de entrenamiento
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    
+    for data, target in train_loader:
+        optimizer.zero_grad()  # Limpiar los gradientes
+        output = model(data)   # Realizar la predicción
+        loss = criterion(output, target)  # Calcular la pérdida
+        loss.backward()  # Hacer backpropagation
+        optimizer.step()  # Actualizar los pesos
+        
+        running_loss += loss.item()
+        _, predicted = torch.max(output, 1)  # Obtener la clase predicha
+        total += target.size(0)
+        correct += (predicted == target).sum().item()
+    
+    # Calcular y mostrar la precisión y pérdida por época
+    accuracy = 100 * correct / total
+    print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}, Accuracy: {accuracy:.2f}%")
+
+# Guardar el modelo y las etiquetas
+torch.save(model.state_dict(), "Modelos/modelo_cnn.pth")
+with open("Modelos/labels.txt", "w") as f:
+    for label in y_labels:
+        f.write(f"{label}\n")
+
+print("Modelo entrenado y guardado.")
