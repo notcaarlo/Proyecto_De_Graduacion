@@ -4,7 +4,7 @@ import face_recognition
 import numpy as np
 
 # Pide el nombre antes de comenzar la captura del video
-nombre = input("Ingrese el nombre de la persona: ")
+nombre = input("Ingrese su nombre: ")
 carpeta = f"dataset/{nombre}"
 
 # Verifica si la carpeta existe, si no la crea

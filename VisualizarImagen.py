@@ -23,7 +23,7 @@ while True:
         # Usar el modelo SVM para hacer una predicción
         prediccion = clf.predict([embedding])[0]
         cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-        cv2.putText(frame, f"Persona: {prediccion}", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        cv2.putText(frame, f"{prediccion}", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
     cv2.imshow("Reconocimiento Facial", frame)
 
