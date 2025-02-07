@@ -2,7 +2,7 @@
 
 class Config:
     BATCH_SIZE = 8
-    EPOCHS = 10
+    EPOCHS = 50
     LEARNING_RATE = 0.001
     IMAGE_SIZE = (224, 224)  # Redimensionar las imágenes a 224x224
     USE_GPU = False          # Si hay una GPU disponible
