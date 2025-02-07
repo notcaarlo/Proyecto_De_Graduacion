@@ -1,21 +1,38 @@
-import face_recognition
 import os
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+from torchvision import models, transforms
+from PIL import Image
+import numpy as np
+import face_recognition
 
 # Crear listas para los embeddings y los nombres
 imagenes = []
 nombres = []
 
 # Ruta base donde se almacenan las imágenes
-base_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'caras')
+base_path = os.path.join(os.path.dirname(__file__), 'data', 'caras')
 
 # Verifica si la ruta de la base existe
 if not os.path.exists(base_path):
     raise ValueError(f"La carpeta {base_path} no existe. Verifica la ruta.")
+
+# Cargar el modelo ResNet18 preentrenado
+from torchvision.models import ResNet18_Weights
+resnet = models.resnet18(weights=ResNet18_Weights.DEFAULT)  # Usamos ResNet18 de PyTorch
+resnet.eval()  # Configuramos el modelo en modo de evaluación
+
+# Eliminar la capa final de clasificación en ResNet
+resnet = nn.Sequential(*list(resnet.children())[:-1])
+
+# Definir las transformaciones para las imágenes
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Resize((224, 224)),  # Redimensionar a 224x224
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalizar
+])
 
 # Recorre las carpetas dentro de 'data/caras' (cada carpeta es una persona)
 for carpeta in os.listdir(base_path):
@@ -28,11 +45,19 @@ for carpeta in os.listdir(base_path):
             if archivo.endswith(".jpg"):
                 imagen_path = os.path.join(carpeta_path, archivo)
                 imagen = face_recognition.load_image_file(imagen_path)
+                
                 try:
-                    # Obtener el embedding de la cara
-                    embedding = face_recognition.face_encodings(imagen)[0]
-                    imagenes.append(embedding)
+                    # Obtener el rostro y redimensionarlo para el modelo ResNet18
+                    rostro = imagen
+                    rostro_resized = Image.fromarray(rostro)  # Convertir a imagen PIL
+                    rostro_resized = transform(rostro_resized).unsqueeze(0)  # Aplicar transformaciones y agregar batch dimension
+
+                    # Extraer características con el modelo ResNet18
+                    with torch.no_grad():  # Desactivar el cálculo de gradientes para ahorrar memoria
+                        features = resnet(rostro_resized)  # Pasar la imagen a través de ResNet18
+                    imagenes.append(features.flatten().numpy())  # Aplanar las características y agregar a la lista
                     nombres.append(carpeta)
+                    
                 except IndexError:
                     print(f"Rostro no encontrado en {imagen_path}, omitiendo imagen.")
 
@@ -45,30 +70,42 @@ y = np.array([y_labels.index(name) for name in nombres])
 X_tensor = torch.tensor(X, dtype=torch.float32)
 y_tensor = torch.tensor(y, dtype=torch.long)
 
+# Asegurarse de que X_tensor tenga la forma [batch_size, seq_len, input_size]
+X_tensor = X_tensor.view(X_tensor.size(0), 1, 512)  # Redimensiona para que coincida con input_size
+
+# Verifica la forma de X_tensor antes de pasarlo al LSTM
+print("Forma de X_tensor antes de pasarlo al LSTM:", X_tensor.shape)  # Debería ser [batch_size, 1, 512]
+
 # Crear DataLoader
 dataset = TensorDataset(X_tensor, y_tensor)
 train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-# Definir la red neuronal
-class FaceRecognitionNN(nn.Module):
-    def __init__(self):
-        super(FaceRecognitionNN, self).__init__()
-        self.fc1 = nn.Linear(128, 256)  # Entrada de 128 (embedding de cara) a 256
-        self.dropout1 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(256, 128)  # Capa intermedia de 256 a 128
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc3 = nn.Linear(128, len(y_labels))  # Capa de salida con número de clases
+# Definir la red neuronal con CNN + LSTM
+class FaceRecognitionCNNLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super(FaceRecognitionCNNLSTM, self).__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc1 = nn.Linear(hidden_size, 128)
+        self.fc2 = nn.Linear(128, num_classes)
+        self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = self.dropout1(x)
-        x = torch.relu(self.fc2(x))
-        x = self.dropout2(x)
-        x = self.fc3(x)
-        return x
+        out, (hn, cn) = self.lstm(x)
+        if out.dim() == 3:
+            out = out[:, -1, :]  # Último paso de la secuencia
+        out = self.dropout(out)
+        out = torch.relu(self.fc1(out))
+        out = self.fc2(out)
+        return out
 
-# Instanciar el modelo
-model = FaceRecognitionNN()
+
+# Definir el modelo
+input_size = 512  # Características extraídas por ResNet
+hidden_size = 128
+num_layers = 2
+num_classes = len(y_labels)
+
+model = FaceRecognitionCNNLSTM(input_size, hidden_size, num_layers, num_classes)
 
 # Definir el optimizador y la función de pérdida
 optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -99,8 +136,12 @@ for epoch in range(epochs):
     print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}, Accuracy: {accuracy:.2f}%")
 
 # Guardar el modelo y las etiquetas
-model_save_path = os.path.join(os.path.dirname(__file__), '..', 'Modelos', 'modelo_cnn.pth')
-labels_save_path = os.path.join(os.path.dirname(__file__), '..', 'Modelos', 'labels.txt')
+model_save_path = os.path.join(os.path.dirname(__file__), 'Modelos', 'modelo_cnn_lstm.pth')
+labels_save_path = os.path.join(os.path.dirname(__file__), 'Modelos', 'labels.txt')
+
+# Verificar si la carpeta existe antes de guardar
+if not os.path.exists(os.path.dirname(model_save_path)):
+    os.makedirs(os.path.dirname(model_save_path))
 
 torch.save(model.state_dict(), model_save_path)
 
