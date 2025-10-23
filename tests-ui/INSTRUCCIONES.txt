@@ -1,0 +1,10 @@
+Por carpeta (todas las suites):
+robot -d reports\ui tests-ui
+
+Solo conductor + admin:
+
+robot -d reports\ui tests-ui\conductor.robot tests-ui\admin.robot
+
+Una suite específica:
+
+robot -d reports\ui tests-ui\admin.robot

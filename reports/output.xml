@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.3.2 (Python 3.10.6 on win32)" generated="2025-10-17T15:06:08.448116" rpa="false" schemaversion="5">
+<suite id="s1" name="Tests-Ui" source="D:\U\Proyecto de Graduacion 2\Proyecto detector de somnolencia\tests-ui">
+<suite id="s1-s1" name="01 Login" source="D:\U\Proyecto de Graduacion 2\Proyecto detector de somnolencia\tests-ui\01_login.robot">
+<test id="s1-s1-t1" name="Login Como Conductor" line="8">
+<kw name="Abrir Navegador En">
+<msg time="2025-10-17T15:06:09.466827" level="FAIL">No keyword with name 'Abrir Navegador En' found.</msg>
+<arg>${LOGIN_URL}</arg>
+<status status="FAIL" start="2025-10-17T15:06:09.466827" elapsed="0.000000">No keyword with name 'Abrir Navegador En' found.</status>
+</kw>
+<kw name="Hacer Login Con">
+<arg>${CONDUCTOR_USER}</arg>
+<arg>${CONDUCTOR_PASS}</arg>
+<status status="NOT RUN" start="2025-10-17T15:06:09.467831" elapsed="0.000000"/>
+</kw>
+<kw name="Ir A">
+<arg>${PERFIL_URL}</arg>
+<status status="NOT RUN" start="2025-10-17T15:06:09.467831" elapsed="0.000000"/>
+</kw>
+<kw name="Deberia Ver Texto">
+<arg>Bienvenido</arg>
+<status status="NOT RUN" start="2025-10-17T15:06:09.467831" elapsed="0.000000"/>
+</kw>
+<msg time="2025-10-17T15:06:09.505349" level="INFO">Starting Browser process D:\U\Proyecto de Graduacion 2\Proyecto detector de somnolencia\venv-ui\lib\site-packages\Browser\wrapper\index.js using at 127.0.0.1:60218</msg>
+<errors>
+<msg time="2025-10-17T15:06:08.490126" level="WARN">Error in file 'D:\U\Proyecto de Graduacion 2\Proyecto detector de somnolencia\tests-ui\resources\keywords.resource' on line 31: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
+<msg time="2025-10-17T15:06:42.475004" level="ERROR">Execution stopped by user.</msg>
+</errors>
+</robot>

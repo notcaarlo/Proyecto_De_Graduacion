@@ -1,0 +1,176 @@
+/* ===== CARDS & BLOCKS ===== */
+.card-clean{
+  background: linear-gradient(180deg, var(--panel) 0%, #091223 100%);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;
+  box-shadow: var(--shadow);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, filter .18s ease;
+}
+.card-clean:hover{
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+  border-color: rgba(96,165,250,.18);
+  filter: saturate(1.02);
+}
+
+.block{
+  background: var(--panel);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;
+  box-shadow: var(--shadow);
+}
+.block-header{
+  padding: .95rem 1.1rem;
+  background: linear-gradient(180deg, var(--panel-2) 0%, #0e1a2f 100%);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  border-top-left-radius:16px; border-top-right-radius:16px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.block-body{ padding:1rem; }
+
+/* ===== FORMS DARK ===== */
+.form-control, .form-select{
+  background:#0a1322;
+  color:var(--ink);
+  border:1px solid var(--line);
+  border-radius:12px;
+  transition:border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.form-control::placeholder{ color:#6e809e; }
+.form-control:focus, .form-select:focus{
+  border-color:#3b82f6;
+  background:#0a1220;
+  box-shadow:0 0 0 .25rem rgba(59,130,246,.15);
+}
+
+/* ===== BUTTONS ===== */
+.btn-soft{ border-radius:12px; padding:.6rem 1rem; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease; }
+.btn-soft:active{ transform: translateY(1px) scale(.98); }
+
+.btn-primary-dark{
+  background: linear-gradient(145deg, var(--primary), #13b153);
+  color:#081017; border:none;
+  box-shadow: 0 6px 16px rgba(34,197,94,.25);
+}
+.btn-primary-dark:hover{ filter: brightness(1.06); box-shadow: 0 10px 24px rgba(34,197,94,.35); }
+
+.btn-outline-light{
+  border-color:#334155; color:#dbeafe; background:transparent;
+}
+.btn-outline-light:hover{ background:#1e293b; color:#fff; }
+
+.btn-outline-secondary{
+  border-color:#334155; color:#cbd5e1; background:transparent;
+}
+.btn-outline-secondary:hover{ background:#162132; color:#fff; }
+
+.btn-danger-dark{
+  background: linear-gradient(145deg, #b11f2a, var(--danger));
+  color:#fff; border:none;
+  box-shadow: 0 6px 16px rgba(239,68,68,.25);
+}
+.btn-danger-dark:hover{ filter:brightness(1.06); }
+
+/* Botón destacado para “Finalizar jornada” */
+.btn-finalizar{
+  font-size:1.15rem; padding:18px 36px; border-radius:14px;
+  background: linear-gradient(145deg, #a61b1b, #ef4444);
+  color:#fff; border:none; font-weight:600;
+  box-shadow:0 10px 28px rgba(239,68,68,.3);
+}
+.btn-finalizar:hover{ box-shadow:0 14px 36px rgba(239,68,68,.4); transform: translateY(-1px); }
+
+/* ===== TABLES ===== */
+.table-dark{
+  --bs-table-bg:#0b1222;
+  --bs-table-striped-bg:#0d1628;
+  --bs-table-striped-color:var(--ink);
+  --bs-table-hover-bg:#0f1a2e;
+  color:var(--ink);
+}
+.table thead th{
+  background: linear-gradient(180deg, var(--panel-2) 0%, #0e182c 100%) !important;
+  border-bottom:1px solid rgba(255,255,255,.08) !important;
+}
+.table-hover tbody tr:hover{
+  background: rgba(34,211,238,.08);
+}
+.table td, .table th{ border-color:#1a253d !important; }
+
+/* ===== BADGES / ALERTS ===== */
+.badge-status{ font-size:.8rem; }
+.badge-success{ background:#16a34a!important; }
+.badge-secondary{ background:#475569!important; }
+
+.alert{
+  border-radius:12px; border:1px solid rgba(255,255,255,.08);
+  background:#0c1526; color:#dbeafe;
+}
+
+/* ===== MODALS ===== */
+.modal-content{
+  background:#0a1322; color:var(--ink);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow: var(--shadow-2);
+}
+.modal-header{
+  background: var(--panel-2);
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+
+/* ===== UTILITARIOS ===== */
+.search-input{
+  max-width:340px; background:#0b1322; border-color:#1e2a44; color:var(--ink);
+}
+.search-input:focus{ border-color:#3b82f6; }
+/* ===== FIX inputs en login (texto negro) ===== */
+
+/* Indica a los navegadores que es tema oscuro (mejora autofill y controles) */
+html { color-scheme: dark; }
+
+/* Texto, caret y fondo del input forzados en oscuro */
+.form-control,
+input.form-control,
+input[type="text"].form-control,
+input[type="password"].form-control,
+input[type="email"].form-control {
+  background-color: #0a1322 !important;   /* coincide con tu paleta */
+  color: var(--ink) !important;            /* #eaf0fa */
+  border-color: var(--line) !important;    /* #1a2540 */
+  caret-color: var(--ink) !important;
+}
+
+/* Placeholder legible en oscuro */
+.form-control::placeholder {
+  color: #94a3b8 !important;               /* un poco más claro que #6e809e */
+  opacity: 1 !important;
+}
+
+/* Estado focus consistente */
+.form-control:focus {
+  border-color: #3b82f6 !important;
+  background-color: #0a1220 !important;
+  box-shadow: 0 0 0 .25rem rgba(59,130,246,.15) !important;
+  color: var(--ink) !important;
+}
+
+/* Corrige el amarillo del autofill de Chrome/Edge y el color del texto */
+input.form-control:-webkit-autofill,
+input.form-control:-webkit-autofill:hover,
+input.form-control:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink) !important;
+  transition: background-color 9999s ease-in-out 0s; /* hack para evitar flicker */
+  box-shadow: 0 0 0px 1000px #0a1322 inset !important;
+  -webkit-box-shadow: 0 0 0px 1000px #0a1322 inset !important;
+}
+
+/* Select en oscuro por coherencia */
+.form-select {
+  background-color: #0a1322 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+.form-select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 .25rem rgba(59,130,246,.15) !important;
+}
