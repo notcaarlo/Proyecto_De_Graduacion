@@ -1,0 +1,2 @@
+pytest -q --cov=app --cov-report=term-missing
+pytest --cov=app --cov-report=html

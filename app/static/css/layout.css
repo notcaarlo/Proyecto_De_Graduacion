@@ -1,0 +1,10 @@
+/* ===== LAYOUT ===== */
+.container-narrow{ max-width: 1180px; }
+.center-page{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding: 2rem;
+}
+.btn-logout{ position: fixed; top: 20px; right: 24px; z-index: 1056; }
+
+.text-muted-2{ color: var(--muted) !important; }
+.shadow-soft{ box-shadow: var(--shadow); }

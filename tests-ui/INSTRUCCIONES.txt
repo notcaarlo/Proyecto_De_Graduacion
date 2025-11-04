@@ -1,0 +1,6 @@
+---------------Todas los scripts (Ejecutar testrun.py)-------------
+robot -d reports\ui tests-ui
+
+-------Una suite específica------------
+
+robot -d reports\ui tests-ui\admin.robot

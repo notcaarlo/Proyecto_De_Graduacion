@@ -1,0 +1,22 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+.env/
+.env
+
+# Archivos temporales de Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Configuración del IDE
+.vscode/
+.idea/
+
+# Archivos de build y distribución (PyInstaller)
+build/
+dist/
+
+# Carpeta de evidencia generada durante las pruebas
+static/evidencia/
