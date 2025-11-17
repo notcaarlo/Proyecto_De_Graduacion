@@ -1,34 +1,26 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask import Response # <-- NUEVO: Para el streaming
-import time              # <-- NUEVO: Para el streaming
+from flask import Response
+import time
 from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import func
 from database.conexion import db
 from app.models import Vehiculo, SesionConduccion, Alerta
-
-# --- MODIFICADO: Importamos el búfer de la cámara ---
 from app.utils.detector_launcher import iniciar_detector, detener_detector, camera_buffer
 
 conductor_bp = Blueprint('conductor', __name__)
 
-# =============================
-# PERFIL DEL CONDUCTOR
-# =============================
+# =======PERFIL DEL CONDUCTOR==============
 @conductor_bp.route('/perfil')
 @login_required
 def perfil_conductor():
     if current_user.rol != 'conductor':
         flash('Acceso denegado.', 'danger')
         return redirect(url_for('dashboard.dashboard'))
-
-    # Sesión activa (si existe)
     sesion_activa = (SesionConduccion.query
                          .filter_by(id_usuario=current_user.id, estado='activa')
                          .order_by(SesionConduccion.id.desc())
                          .first())
-
-    # Vehículos asignados AL CONDUCTOR (solo activos)
     vehiculos_asignados = (Vehiculo.query
                              .filter_by(id_usuario=current_user.id, estado='activo')
                              .order_by(Vehiculo.codigo.asc())
@@ -43,25 +35,21 @@ def perfil_conductor():
         tiene_asignacion=tiene_asignacion
     )
 
-# =============================
-# INICIAR JORNADA  (Sin cambios)
-# =============================
+# ============INICIAR JORNADA=================
 @conductor_bp.route('/perfil/iniciar', methods=['GET', 'POST'])
 @login_required
 def iniciar_jornada():
     if current_user.rol != 'conductor':
         flash('Acceso denegado.', 'danger')
         return redirect(url_for('dashboard.dashboard'))
-
-    # Evitar dos jornadas simultáneas
+    
     existente = SesionConduccion.query.filter_by(
         id_usuario=current_user.id, estado='activa'
     ).first()
     if existente:
         flash('Ya tienes una jornada activa.', 'warning')
         return redirect(url_for('conductor.perfil_conductor'))
-
-    # Lista de vehículos asignados y activos
+    
     vehiculos_asignados = (Vehiculo.query
                              .filter_by(id_usuario=current_user.id, estado='activo')
                              .order_by(Vehiculo.codigo.asc())
@@ -72,8 +60,7 @@ def iniciar_jornada():
             flash('No tienes un vehículo asignado. Contacta a un administrador.', 'warning')
             return redirect(url_for('conductor.perfil_conductor'))
         return render_template('iniciar_jornada.html', vehiculos=vehiculos_asignados)
-
-    # POST
+    
     vehiculo_id = request.form.get('vehiculo_id', type=int)
     if not vehiculo_id:
         flash('Debes seleccionar un vehículo asignado.', 'warning')
@@ -84,17 +71,15 @@ def iniciar_jornada():
         flash('Vehículo inválido, no asignado o inactivo.', 'danger')
         return redirect(url_for('conductor.iniciar_jornada'))
 
-    # Crear sesión
     nueva = SesionConduccion(
         id_usuario=current_user.id,
         id_vehiculo=vehiculo.id,
-        fecha_inicio=datetime.utcnow(),
+        fecha_inicio=datetime.now(),
         estado='activa'
     )
     db.session.add(nueva)
     db.session.commit()
-
-    # Arrancar detector (Esto inicia el hilo que llena 'camera_buffer')
+    
     try:
         iniciar_detector(current_user.id, vehiculo.id)
     except Exception as e:
@@ -103,9 +88,7 @@ def iniciar_jornada():
     flash(f'Jornada iniciada con el vehículo {vehiculo.codigo}.', 'success')
     return redirect(url_for('conductor.perfil_conductor'))
 
-# =============================
-# FINALIZAR JORNADA (Sin cambios)
-# =============================
+# ===========FINALIZAR JORNADA==================
 @conductor_bp.route('/perfil/finalizar', methods=['POST'])
 @login_required
 def finalizar_jornada():
@@ -121,11 +104,10 @@ def finalizar_jornada():
         flash('No tienes una jornada activa.', 'warning')
         return redirect(url_for('conductor.perfil_conductor'))
 
-    sesion.fecha_fin = datetime.utcnow()
+    sesion.fecha_fin = datetime.now()
     sesion.estado = 'finalizada'
     db.session.commit()
-
-    # Detener detector (Esto detiene el hilo que llena 'camera_buffer')
+    
     try:
         detener_detector()
     except Exception as e:
@@ -134,10 +116,6 @@ def finalizar_jornada():
     flash('Jornada finalizada correctamente. Cámara desactivada.', 'success')
     return redirect(url_for('conductor.perfil_conductor'))
 
-# =========================================================
-# === INICIO: NUEVA RUTA DE VIDEO STREAMING ===
-# =========================================================
-
 def generate_frames():
     """
     Generador que lee desde el búfer global 'camera_buffer' 
@@ -145,16 +123,10 @@ def generate_frames():
     """
     print("[Streaming] Iniciando stream para el navegador.")
     while True:
-        # Esperar a que el detector ponga un frame
-        time.sleep(0.05) # ~20 FPS. Ajusta esto para balancear fluidez vs CPU
-        
-        # Obtener los bytes del frame (ya codificado en JPEG)
+        time.sleep(0.05)
         frame_bytes = camera_buffer.get_frame_bytes()
-        
         if not frame_bytes:
             continue
-
-        # Enviar el frame al navegador
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
@@ -162,22 +134,13 @@ def generate_frames():
 @login_required
 def video_feed():
     """Ruta que sirve el video en vivo."""
-    # Devuelve el generador en una Respuesta de Flask
     return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# =========================================================
-# === FIN: NUEVA RUTA DE VIDEO STREAMING ===
-# =========================================================
-
-
-# =============================
-# HISTORIAL (JSON para la tabla) (Sin cambios)
-# =============================
+# ============HISTORIAL DE JORNADAS=================
 @conductor_bp.route('/perfil/historial_json', methods=['GET'])
 @login_required
 def historial_json():
-    # ... (tu código existente aquí, no necesita cambios) ...
     if current_user.rol != 'conductor':
         return jsonify({'sesiones': []})
     sesiones = (SesionConduccion.query

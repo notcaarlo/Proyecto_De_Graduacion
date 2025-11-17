@@ -8,27 +8,24 @@ import numpy as np
 import mediapipe as mp
 import os
 
-# ==============================
-# Índices de ojos (Sin cambios)
-# ==============================
 LEFT_EYE_IDX = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE_IDX = [263, 387, 385, 362, 380, 373]
-
 
 def _euclidean(p1: np.ndarray, p2: np.ndarray) -> float:
     return float(np.linalg.norm(p1 - p2))
 
-
+# Calculo EAR
 def _ear_from_landmarks(landmarks: np.ndarray, eye_idx: list) -> float:
+    # Extrae los landmarks del ojo.
     p1, p2, p3, p4, p5, p6 = [landmarks[i] for i in eye_idx]
-    return (_euclidean(p2, p6) + _euclidean(p3, p5)) / (
-        2.0 * _euclidean(p1, p4) + 1e-8
-    )
+    vert1 = _euclidean(p2, p6)  # Primera distancia vertical
+    vert2 = _euclidean(p3, p5)  # Segunda distancia vertical
 
+    # Ancho del ojo
+    horiz = _euclidean(p1, p4)
 
-# ==============================
-# Configuración (Sin cambios)
-# ==============================
+    # EAR = (vert1 + vert2) / (2 * horiz)
+    return (vert1 + vert2) / (2.0 * horiz + 1e-8) # epsilon (1e-8) para evitar división por cero
 @dataclass
 class DetectorConfig:
     min_detection_confidence: float = 0.5
@@ -37,35 +34,19 @@ class DetectorConfig:
     threshold_ratio: float = 0.75
     min_close_seconds: float = 1.5
     draw_landmarks: bool = False
-
-
-# ==============================
-# Estado interno del detector (Modificado)
-# ==============================
 @dataclass
 class DetectionState:
     ear_open_baseline: Optional[float] = None
     threshold_ear: Optional[float] = None
-    # --- Temporizadores de Somnolencia ---
     closed_start_ts: Optional[float] = None
     last_alert_duration: float = 0.0
     critical_alert_sent: bool = False 
     alert_start_frame: Optional[np.ndarray] = field(default=None, repr=False)
-    
-    # --- NUEVO: Temporizadores Anti-Tamper (Obstrucción) ---
     no_face_start_ts: Optional[float] = None
     no_face_alert_sent: bool = False
-
-    # --- Contadores (Aquí está la línea que falta) ---
     total_alerts: int = 0
     total_somnolencia_time: float = 0.0
-
-
-# ==============================
-# Clase principal del detector
-# ==============================
 class SomnolenceDetector:
-    # --- __init__ y funciones de Beep/EAR/Calibrate (Sin cambios) ---
     def __init__(self, config: DetectorConfig):
         self.cfg = config
         self.state = DetectionState()
@@ -153,10 +134,7 @@ class SomnolenceDetector:
             f"[Calibración] EAR base: {baseline:.3f} | Umbral: {self.state.threshold_ear:.3f}"
         )
         return baseline
-
-    # ----------------------------------------------------
-    # consume_alert_if_ready (Sin cambios)
-    # ----------------------------------------------------
+    
     def consume_alert_if_ready(self) -> Optional[Tuple[float, Optional[np.ndarray]]]:
         """
         Devuelve (duracion, frame) si un episodio de alerta (Bajo o Medio) ha finalizado.
@@ -164,8 +142,7 @@ class SomnolenceDetector:
         if self.state.last_alert_duration > 0.0:
             dur = self.state.last_alert_duration
             frame = self.state.alert_start_frame
-
-            # Limpiar el estado
+            
             self.state.last_alert_duration = 0.0
             self.state.alert_start_frame = None
             self.state.total_alerts += 1

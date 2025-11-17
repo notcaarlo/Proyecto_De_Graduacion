@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from sqlalchemy import func  # <-- necesario para agregados
+from sqlalchemy import func
 from database.conexion import db
 from app.models import Usuario, Alerta, SesionConduccion, Vehiculo
 import pandas as pd
@@ -118,8 +118,6 @@ def ver_usuario(id):
         .group_by(Alerta.nivel_somnolencia)
         .all()
     )
-
-    # Convertimos a diccionario con clave en minúsculas (para colores)
     niveles = {(nivel or 'N/A').lower(): count for nivel, count in nivel_counts}
 
     # Últimas alertas registradas
@@ -129,8 +127,6 @@ def ver_usuario(id):
         .limit(10)
         .all()
     )
-
-    # Renderizamos sin enviar las sesiones (ya no se usan en el HTML)
     return render_template(
         'admin_usuario_detalle.html',
         user=u,
@@ -141,9 +137,7 @@ def ver_usuario(id):
         ultimas_alertas=ultimas_alertas
     )
 
-# ===============================================
-# === INICIO: NUEVA RUTA DE EXPORTACIÓN EXCEL ===
-# ===============================================
+# ================EXPORTACION EXCEL===============================
 @admin_usuarios_bp.route('/dashboard/usuarios/<int:id>/exportar_excel')
 @login_required
 def exportar_excel(id):
@@ -153,8 +147,6 @@ def exportar_excel(id):
     try:
         u = Usuario.query.get_or_404(id)
 
-        # --- 1. Obtenemos los mismos datos que en 'ver_usuario' ---
-
         # Total de sesiones
         total_sesiones = db.session.query(func.count(SesionConduccion.id)) \
             .filter(SesionConduccion.id_usuario == u.id).scalar() or 0
@@ -163,7 +155,7 @@ def exportar_excel(id):
         total_alertas = db.session.query(func.count(Alerta.id)) \
             .filter(Alerta.id_usuario == u.id).scalar() or 0
 
-        # Vehículos más usados (aquí pedimos todos, no solo 5)
+        # Vehículos más usados por el conductor
         vehiculos_top = (
             db.session.query(Vehiculo.codigo, func.count(SesionConduccion.id))
             .join(SesionConduccion, Vehiculo.id == SesionConduccion.id_vehiculo)
@@ -172,7 +164,6 @@ def exportar_excel(id):
             .order_by(func.count(SesionConduccion.id).desc())
             .all()
         )
-
         # Alertas agrupadas por nivel
         nivel_counts = (
             db.session.query(Alerta.nivel_somnolencia, func.count(Alerta.id))
@@ -182,17 +173,14 @@ def exportar_excel(id):
         )
         niveles = {(nivel or 'N/A').lower(): count for nivel, count in nivel_counts}
 
-        # Últimas alertas (aquí las pedimos todas, no solo 10)
+        # Últimas alertas registradas
         todas_las_alertas = (
             Alerta.query.filter_by(id_usuario=u.id)
             .order_by(Alerta.id.desc())
             .all()
         )
 
-        # --- 2. Creamos el archivo Excel en memoria ---
-
         output = io.BytesIO()
-        # Usamos 'with' para manejar el 'writer' correctamente
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             
             # Pestaña 1: Resumen
@@ -220,7 +208,6 @@ def exportar_excel(id):
 
             # Pestaña 4: Historial de Alertas
             if todas_las_alertas:
-                # Convertimos la lista de objetos Alerta a una lista de diccionarios
                 alertas_data = [
                     {
                         "ID": a.id,
@@ -236,11 +223,8 @@ def exportar_excel(id):
                 df_alertas = pd.DataFrame(columns=["ID", "Fecha", "Hora", "Nivel", "Nota", "ID Vehículo"])
             
             df_alertas.to_excel(writer, sheet_name='Historial de Alertas', index=False)
-
-        # --- 3. Preparamos y enviamos el archivo ---
-        output.seek(0) # Regresamos al inicio del buffer
-        
-        # Nombre del archivo
+            
+        output.seek(0)
         fecha_hoy = datetime.now().strftime('%Y-%m-%d')
         filename = f"reporte_usuario_{u.username}_{fecha_hoy}.xlsx"
 
@@ -254,7 +238,3 @@ def exportar_excel(id):
     except Exception as e:
         flash(f'Error al generar el archivo Excel: {e}', 'danger')
         return redirect(url_for('admin_usuarios.ver_usuario', id=id))
-
-# ===============================================
-# === FIN: NUEVA RUTA DE EXPORTACIÓN EXCEL =====
-# ===============================================

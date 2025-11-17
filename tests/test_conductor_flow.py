@@ -8,7 +8,6 @@ def login_as(client, app, usuario):
         login_user(usuario)
 
 def test_iniciar_finalizar_jornada(client, app, monkeypatch):
-    # Mockear detector para que no abra cámara en tests
     monkeypatch.setattr("app.routes.conductor.iniciar_detector", lambda *a, **k: None)
     monkeypatch.setattr("app.routes.conductor.detener_detector", lambda *a, **k: None)
 
@@ -17,17 +16,14 @@ def test_iniciar_finalizar_jornada(client, app, monkeypatch):
         v = Vehiculo(codigo="T01")
         db.session.add_all([u, v]); db.session.commit()
         uid, vid = u.id, v.id
-
-    # Forzar sesión (si usás flask_login en rutas)
+        
     with client.session_transaction() as sess:
         sess["_user_id"] = str(uid)
 
-    # Iniciar (POST)
     r = client.post("/perfil/iniciar", data={"vehiculo_id": str(vid)}, follow_redirects=True)
     assert r.status_code == 200
     assert b"Jornada iniciada" in r.data
 
-    # Finalizar (POST)
     r2 = client.post("/perfil/finalizar", follow_redirects=True)
     assert r2.status_code == 200
     assert b"Jornada finalizada" in r2.data

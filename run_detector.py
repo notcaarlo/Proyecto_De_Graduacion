@@ -1,12 +1,10 @@
-# run_detector.py
 import argparse
 import time
 from datetime import datetime
 import requests
-import cv2  # <-- Necesario para codificar la imagen
+import cv2
 import threading
 
-# Asegúrate de que el nombre del módulo sea correcto
 from ia_module.mediapipe_detector import SomnolenceDetector, DetectorConfig
 
 
@@ -18,11 +16,9 @@ def nivel_por_duracion(seg: float) -> str:
     return "critico"
 
 
-# --- Modificado para aceptar el 'frame' ---
 def post_alerta(server: str, id_usuario: int, id_vehiculo: int, duracion: float, frame):
     url = f"{server.rstrip('/')}/api/alertas"
     
-    # --- Datos del formulario (como strings) ---
     data = {
         "id_usuario": str(id_usuario),
         "id_vehiculo": str(id_vehiculo),
@@ -31,7 +27,6 @@ def post_alerta(server: str, id_usuario: int, id_vehiculo: int, duracion: float,
         "nivel_somnolencia": nivel_por_duracion(duracion)
     }
 
-    # --- Preparar el archivo de imagen ---
     files = None
     if frame is not None:
         try:
@@ -45,7 +40,6 @@ def post_alerta(server: str, id_usuario: int, id_vehiculo: int, duracion: float,
         except Exception as e:
             print(f"[API] Error al codificar la imagen: {e}")
 
-    # --- Enviar como 'multipart/form-data' ---
     try:
         r = requests.post(url, data=data, files=files, timeout=5)
         
@@ -78,7 +72,6 @@ def main():
     det = SomnolenceDetector(cfg)
 
     def loop_detector():
-        # --- CORREGIDO: Llama a det.run() ---
         det.run(camera_index=args.camera)
 
     t = threading.Thread(target=loop_detector, daemon=True)
@@ -88,7 +81,6 @@ def main():
     try:
         while t.is_alive():
             
-            # --- Modificado para esperar (duracion, frame) ---
             result = det.consume_alert_if_ready() 
             
             if result is not None:

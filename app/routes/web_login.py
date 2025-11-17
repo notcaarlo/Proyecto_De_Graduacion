@@ -19,13 +19,11 @@ def login():
         login_user(usuario)
         flash(f'Bienvenido {usuario.nombre} ({usuario.rol})', 'success')
 
-        # Redirigir por rol
         if usuario.rol == 'admin':
             return redirect(url_for('dashboard.dashboard'))
         else:
             return redirect(url_for('conductor.perfil_conductor'))
 
-    # GET: mostrar login
     return render_template('login.html')
 
 @web_login_bp.route('/logout')
@@ -35,7 +33,6 @@ def logout():
     flash('Sesión cerrada correctamente.', 'info')
     return redirect(url_for('web_login.login'))
 
-# IMPORTANTE: redirige correctamente sin generar bucles
 @web_login_bp.route('/perfil_redirect')
 @login_required
 def perfil_redirect():

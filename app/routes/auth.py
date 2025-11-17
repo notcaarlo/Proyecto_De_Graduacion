@@ -3,7 +3,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from database.conexion import db
 from app.models import Usuario
 
-# Crear el blueprint
 auth_bp = Blueprint('auth', __name__)
 
 # ------------------ REGISTRO ------------------

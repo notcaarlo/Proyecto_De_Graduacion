@@ -33,10 +33,9 @@ def toggle_sesion(id):
 
     if sesion.estado == 'activa':
         sesion.estado = 'finalizada'
-        sesion.fecha_fin = datetime.utcnow()
+        sesion.fecha_fin = datetime.now()
         flash(f'Sesión {id} finalizada.', 'success')
     else:
-        # Re-activar (útil para corregir estados). Se quita fecha_fin.
         sesion.estado = 'activa'
         sesion.fecha_fin = None
         flash(f'Sesión {id} activada.', 'warning')

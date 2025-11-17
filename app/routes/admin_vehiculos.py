@@ -5,9 +5,7 @@ from app.models import Vehiculo, Usuario
 
 admin_vehiculos_bp = Blueprint('admin_vehiculos', __name__)
 
-# ================================
-# VERIFICAR ROL ADMINISTRADOR
-# ================================
+# =========VERIFICAR ROL ADMINISTRADO=======================
 def _solo_admin():
     if current_user.rol != 'admin':
         flash('Acceso denegado: solo administradores pueden acceder.', 'danger')
@@ -15,9 +13,7 @@ def _solo_admin():
     return True
 
 
-# ================================
-# LISTAR VEHÍCULOS
-# ================================
+# ==============LISTAR VEHÍCULOS==================
 @admin_vehiculos_bp.route('/dashboard/vehiculos')
 @login_required
 def listar_vehiculos():
@@ -34,9 +30,7 @@ def listar_vehiculos():
     )
 
 
-# ================================
-# CREAR VEHÍCULO
-# ================================
+# ===============CREAR VEHÍCULO=================
 @admin_vehiculos_bp.route('/dashboard/vehiculos/crear', methods=['POST'])
 @login_required
 def crear_vehiculo():
@@ -62,7 +56,6 @@ def crear_vehiculo():
     if estado not in ('activo', 'inactivo'):
         estado = 'activo'
 
-    # OJO: aceptar 0 como válido -> usar "is not None"
     if id_usuario is not None:
         conductor = Usuario.query.get(id_usuario)
         if not conductor or conductor.rol != 'conductor':
@@ -88,9 +81,7 @@ def crear_vehiculo():
     return redirect(url_for('admin_vehiculos.listar_vehiculos'))
 
 
-# ================================
-# ACTIVAR / DESACTIVAR VEHÍCULO
-# ================================
+# ============ACTIVAR / DESACTIVAR VEHÍCULO===================
 @admin_vehiculos_bp.route('/dashboard/vehiculos/<int:id>/toggle', methods=['POST'])
 @login_required
 def toggle_vehiculo(id):
@@ -105,9 +96,7 @@ def toggle_vehiculo(id):
     return redirect(url_for('admin_vehiculos.listar_vehiculos'))
 
 
-# ================================
-# ELIMINAR VEHÍCULO
-# ================================
+# =============ELIMINAR VEHÍCULO===================
 @admin_vehiculos_bp.route('/dashboard/vehiculos/<int:id>/eliminar', methods=['POST'])
 @login_required
 def eliminar_vehiculo(id):
@@ -122,9 +111,7 @@ def eliminar_vehiculo(id):
     return redirect(url_for('admin_vehiculos.listar_vehiculos'))
 
 
-# ================================
-# ASIGNAR / DESASIGNAR CONDUCTOR
-# ================================
+# =============ASIGNAR / DESASIGNAR CONDUCTOR===================
 @admin_vehiculos_bp.route('/dashboard/vehiculos/<int:id>/asignar', methods=['POST'])
 @login_required
 def asignar_vehiculo(id):
@@ -132,9 +119,8 @@ def asignar_vehiculo(id):
         return redirect(url_for('web_login.perfil_redirect'))
 
     v = Vehiculo.query.get_or_404(id)
-    id_usuario = request.form.get('id_usuario', type=int)  # puede ser 0
+    id_usuario = request.form.get('id_usuario', type=int)
 
-    # Aceptar 0 -> usar "is not None"
     if id_usuario is not None:
         conductor = Usuario.query.get(id_usuario)
         if not conductor or conductor.rol != 'conductor':

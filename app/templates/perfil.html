@@ -174,7 +174,6 @@ async function cargarHistorial(){
 document.getElementById('btnReload')?.addEventListener('click', cargarHistorial);
 cargarHistorial(); setInterval(cargarHistorial, 10000);
 
-// Modal seleccionar (sin cambios)
 const $tbody = document.querySelector('#tabla-vehiculos tbody');
 const $search = document.getElementById('vehiculos-search');
 const $vehiculoId = document.getElementById('vehiculo_id');

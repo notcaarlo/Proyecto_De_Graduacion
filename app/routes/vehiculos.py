@@ -15,7 +15,7 @@ def crear_vehiculo():
     anio = data.get('anio')
     placa = data.get('placa')
     estado = data.get('estado', 'activo')
-    asignado_a = data.get('asignado_a')  # id del usuario
+    asignado_a = data.get('asignado_a') 
 
     if not codigo:
         return jsonify({'error': 'El código del vehículo es obligatorio'}), 400
@@ -37,7 +37,6 @@ def crear_vehiculo():
     db.session.commit()
 
     return jsonify({'message': 'Vehículo registrado correctamente'}), 201
-
 
 # Obtener todos los vehículos
 @vehiculos_bp.route('/api/vehiculos', methods=['GET'])

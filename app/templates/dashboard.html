@@ -96,7 +96,7 @@
   <div class="row g-3 mb-3">
     <div class="col-lg-7">
       <div class="block">
-        <div class="block-header"><strong>Alertas por Hora del Día</strong></div>
+        <div class="block-header"><strong>Alertas por Hora</strong></div>
         <div class="block-body">
           <canvas id="chartAlertasHora" height="150"></canvas>
         </div>
@@ -104,7 +104,7 @@
     </div>
     <div class="col-lg-5">
         <div class="block">
-            <div class="block-header"><strong>Top 5: Tasa de Riesgo (Alertas/Hora)</strong></div>
+            <div class="block-header"><strong>Tasa de Riesgo</strong></div>
             <div class="block-body">
                 <canvas id="chartTopConductores" height="150"></canvas>
             </div>
@@ -173,8 +173,6 @@
                             <tr>
                                 <td>{{ conductor }}</td>
                                 <td>{{ vehiculo }}</td>
-                                Ambos archivos están listos. Reemplázalos y pruébalos. Deberías ver los botones de filtro y los gráficos se actualizarán según el rango que elijas (excepto "Jornadas Activas", que siempre muestra el estado actual).<td>{{ inicio.strftime('%H:%M') }}</td>
-                            </tr>
                             {% else %}
                             <tr>
                                 <td colspan="3" class="text-center py-4">No hay jornadas activas.</td>
@@ -201,15 +199,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // Opciones globales de Chart.js para el modo oscuro
   Chart.defaults.color = '#e5e7eb';
   Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 
-  // Cargar datos desde el script JSON
   const dataElement = document.getElementById('dashboard-data');
   const data = JSON.parse(dataElement.textContent);
 
-  // 1. Renderizar Gráfico 1: Alertas por Hora (Gráfico de Barras)
   const ctxHoras = document.getElementById('chartAlertasHora');
   if (ctxHoras) {
     new Chart(ctxHoras, {
@@ -233,18 +228,17 @@ document.addEventListener('DOMContentLoaded', () => {
         scales: {
           y: {
             beginAtZero: true,
-            ticks: { stepSize: 1 } // Solo números enteros en el eje Y
+            ticks: { stepSize: 1 }
           }
         }
       }
     });
   }
 
-  // 2. Renderizar Gráfico 2: Tasa de Riesgo (Gráfico de Barras Horizontal)
   const ctxRiesgo = document.getElementById('chartTopConductores');
   if (ctxRiesgo) {
     new Chart(ctxRiesgo, {
-      type: 'bar', // 'bar' para horizontal, 'indexAxis: 'y'' lo hace horizontal
+      type: 'bar',
       data: {
         labels: data.riesgo_labels,
         datasets: [{
@@ -256,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }]
       },
       options: {
-        indexAxis: 'y', // <-- Esto lo hace horizontal
+        indexAxis: 'y',
         responsive: true,
         plugins: {
           legend: { display: false },
