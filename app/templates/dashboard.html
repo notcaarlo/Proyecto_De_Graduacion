@@ -5,28 +5,45 @@
   <title>Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard.css') }}">
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  
-  <style>
-    .nivel-bajo { background: #10b981; }
-    .nivel-medio { background: #f59e0b; }
-    .nivel-alto { background: #991b1b; color: #fff; }
-    .nivel-critico { background: #dc2626; color: #fff; }
-  </style>
 </head>
-<body data-last-alert-id="{{ last_seen_alert_id }}">
-<a href="{{ url_for('web_login.logout') }}" class="btn btn-danger-dark btn-soft btn-logout">Cerrar sesión</a>
 
-<div class="container py-4 container-narrow">
+<body data-last-alert-id="{{ last_seen_alert_id }}" class="dashboard-layout">
+
+<aside class="dashboard-sidebar">
+  <h3>Panel de Control</h3>
   
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h4 m-0">Panel de administración</h1>
+  <nav class="sidebar-nav d-flex flex-column gap-3">
+    <a href="{{ url_for('admin_usuarios.listar_usuarios') }}" class="text-decoration-none">
+      <div class="card-clean p-3">
+        <h5 class="mb-1 fs-6">Gestión de usuarios</h5>
+        <p class="text-muted-2 mb-0 small">Altas, roles y estado.</p>
+      </div>
+    </a>
+    
+    <a href="{{ url_for('admin_vehiculos.listar_vehiculos') }}" class="text-decoration-none">
+      <div class="card-clean p-3">
+        <h5 class="mb-1 fs-6">Gestión de vehículos</h5>
+        <p class="text-muted-2 mb-0 small">Registrar, asignar, activar.</p>
+      </div>
+    </a>
+  </nav>
+
+  <a href="{{ url_for('web_login.logout') }}" class="btn btn-danger-dark btn-soft btn-logout-sidebar mt-auto">Cerrar sesión</a>
+</aside>
+
+<main class="dashboard-main">
+
+  <header class="main-header">
+    <h1 class="h4 m-0">Bienvenido, {{ user.nombre }} (admin)</h1>
     <div class="btn-group" role="group">
       <a href="{{ url_for('dashboard.dashboard', rango='todo') }}" 
          class="btn btn-sm {{ 'btn-primary-dark' if rango_activo == 'todo' else 'btn-outline-secondary' }}">Todo</a>
@@ -37,7 +54,8 @@
       <a href="{{ url_for('dashboard.dashboard', rango='mes') }}" 
          class="btn btn-sm {{ 'btn-primary-dark' if rango_activo == 'mes' else 'btn-outline-secondary' }}">Este Mes</a>
     </div>
-  </div>
+  </header>
+
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, msg in messages %}
@@ -72,121 +90,111 @@
     </div>
   </div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-md-6">
-      <a href="{{ url_for('admin_usuarios.listar_usuarios') }}" class="text-decoration-none">
-        <div class="card-clean p-4 h-100">
-          <h5 class="mb-1">Gestión de usuarios</h5>
-          <p class="text-muted-2 mb-0">Altas, roles y estado.</p>
-        </div>
-      </a>
-    </div>
-    <div class="col-md-6">
-      <a href="{{ url_for('admin_vehiculos.listar_vehiculos') }}" class="text-decoration-none">
-        <div class="card-clean p-4 h-100">
-          <h5 class="mb-1">Gestión de vehículos</h5>
-          <p class="text-muted-2 mb-0">Registrar, asignar, activar o desactivar.</p>
-        </div>
-      </a>
-    </div>
-  </div>
-
   <div class="row g-3 mb-3">
     <div class="col-lg-7">
       <div class="block">
         <div class="block-header"><strong>Alertas por Hora</strong></div>
-        <div class="block-body">
-          <canvas id="chartAlertasHora" height="150"></canvas>
+        <div class="block-body" style="position: relative; height:300px;">
+          <canvas id="chartAlertasHora"></canvas>
         </div>
       </div>
     </div>
     <div class="col-lg-5">
         <div class="block">
             <div class="block-header"><strong>Tasa de Riesgo</strong></div>
-            <div class="block-body">
-                <canvas id="chartTopConductores" height="150"></canvas>
+            <div class="block-body" style="position: relative; height:300px;">
+                <canvas id="chartTopConductores"></canvas>
             </div>
         </div>
     </div>
   </div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7">
-      <div class="block">
-        <div class="block-header"><strong>Últimas Alertas Recibidas</strong></div>
-        <div class="block-body p-0">
-          <div class="table-responsive">
-            <table class="table table-dark table-striped table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Hora</th>
-                  <th>Conductor</th>
-                  <th>Vehículo</th>
-                  <th>Nivel</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for alerta, conductor, vehiculo in ultimas_alertas %}
-                {% set n = (alerta.nivel_somnolencia or '')|lower %}
-                <tr>
-                  <td>{{ alerta.hora.strftime('%H:%M:%S') if alerta.hora else '—' }}</td>
-                  <td>{{ conductor or 'N/A' }}</td>
-                  <td>{{ vehiculo or 'N/A' }}</td>
-                  <td>
-                    <span class="badge badge-nivel
-                      {{ 'nivel-bajo' if n=='bajo' else 
-                         ('nivel-medio' if n=='medio' else 
-                         ('nivel-alto' if n=='alto' else 
-                         ('nivel-critico' if n=='critico' else ''))) 
-                      }}
-                    ">{{ alerta.nivel_somnolencia or 'N/A' }}</span>
-                  </td>
-                </tr>
-                {% else %}
-                <tr>
-                  <td colspan="4" class="text-center py-4">No hay alertas registradas{% if rango_activo != 'todo' %} para este período{% endif %}.</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+</main>
+
+<aside class="dashboard-widgets">
+
+  <div class="widget-clock">
+    <div class="time" id="clock-time">--:--</div>
+    <div class="date" id="clock-date">Cargando...</div>
+  </div>
+
+  <div class="widget-table mb-3">
+    <div class="block">
+      <div class="block-header"><strong>Últimas Alertas Recibidas</strong></div>
+      <div class="block-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-striped table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Conductor</th>
+                <th>Nivel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for alerta, conductor, vehiculo in ultimas_alertas %}
+              {% set n = (alerta.nivel_somnolencia or '')|lower %}
+              <tr>
+                <td>{{ alerta.hora.strftime('%H:%M:%S') if alerta.hora else '—' }}</td>
+                <td>{{ conductor or 'N/A' }}</td>
+                <td>
+                  <span class="badge badge-nivel
+                    {{ 'nivel-bajo' if n=='bajo' else 
+                       ('nivel-medio' if n=='medio' else 
+                       ('nivel-alto' if n=='alto' else 
+                       ('nivel-critico' if n=='critico' else ''))) 
+                    }}
+                  ">{{ alerta.nivel_somnolencia or 'N/A' }}</span>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="3" class="text-center py-4">No hay alertas registradas.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
-    <div class="col-lg-5">
-        <div class="block">
-            <div class="block-header"><strong>Conductores en Jornada Activa</strong></div>
-            <div class="block-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-dark table-striped table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Conductor</th>
-                                <th>Vehículo</th>
-                                <th>Inicio</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for conductor, vehiculo, inicio in jornadas_activas %}
-                            <tr>
-                                <td>{{ conductor }}</td>
-                                <td>{{ vehiculo }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="3" class="text-center py-4">No hay jornadas activas.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+  </div>
+
+  <div class="widget-table">
+    <div class="block">
+        <div class="block-header"><strong>Conductores en Jornada Activa</strong></div>
+        <div class="block-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Conductor</th>
+                            <th>Vehículo</th>
+                            <th>Inicio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for conductor, vehiculo, inicio in jornadas_activas %}
+                        <tr>
+                            <td>{{ conductor }}</td>
+                            <td>{{ vehiculo }}</td>
+                            <td>{{ inicio.strftime('%H:%M') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center py-4">No hay jornadas activas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
   </div>
 
-</div> <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-    <div id="toast-template" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
+</aside>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="toast-template" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
         <div class="toast-header bg-danger text-white">
             <strong class="me-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle-fill me-2" viewBox="0 0 16 16">
@@ -201,6 +209,7 @@
             </div>
     </div>
 </div>
+
 <script id="dashboard-data" type="application/json">
   {
     "horas_labels": {{ horas_labels|tojson|safe }},
@@ -209,6 +218,7 @@
     "riesgo_data": {{ riesgo_data|tojson|safe }}
   }
 </script>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   Chart.defaults.color = '#e5e7eb';
@@ -217,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const dataElement = document.getElementById('dashboard-data');
   const data = JSON.parse(dataElement.textContent);
 
+  // Gráfico de Alertas por Hora
   const ctxHoras = document.getElementById('chartAlertasHora');
   if (ctxHoras) {
     new Chart(ctxHoras, {
@@ -233,12 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { enabled: true } },
         scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
       }
     });
   }
 
+  // Gráfico de Tasa de Riesgo
   const ctxRiesgo = document.getElementById('chartTopConductores');
   if (ctxRiesgo) {
     new Chart(ctxRiesgo, {
@@ -256,43 +269,54 @@ document.addEventListener('DOMContentLoaded', () => {
       options: {
         indexAxis: 'y',
         responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { enabled: true } },
         scales: { x: { beginAtZero: true } }
       }
     });
   }
 
-  // =========================================================
-  // === INICIO: NUEVO SCRIPT DE NOTIFICACIONES PUSH ===
-  // =========================================================
-  
-  // 1. Obtener el ID de la última alerta que el servidor nos envió
+  // --- Lógica de Notificaciones Push (con sonido en bucle) ---
   let lastSeenAlertId = parseInt(document.body.dataset.lastAlertId || '0', 10);
   const toastContainer = document.querySelector('.toast-container');
   const toastTemplate = document.getElementById('toast-template');
 
-  // 2. Función para mostrar el Toast
+  // Asegúrate de tener 'Admin_Alerta.mp3' en 'app/static/sounds/'
+  const alertSound = new Audio("{{ url_for('static', filename='sounds/Admin_Alerta.mp3') }}");
+  alertSound.loop = true; // Repetir el sonido
+  alertSound.preload = 'auto'; 
+
   function showToast(alerta) {
-      if (!toastTemplate) return; // Salir si la plantilla no existe
+      if (!toastTemplate) return;
       
       const newToast = toastTemplate.cloneNode(true);
-      newToast.removeAttribute('id'); // Quitar el ID de la plantilla
+      newToast.removeAttribute('id');
       
       const toastBody = newToast.querySelector('.toast-body');
       toastBody.innerHTML = `<strong>${alerta.conductor} (${alerta.hora}):</strong><br>${alerta.nota}`;
       
       toastContainer.appendChild(newToast);
       
-      // Asegurarse de que Bootstrap esté cargado
       if (typeof bootstrap !== 'undefined') {
         const bsToast = new bootstrap.Toast(newToast);
+
+        // Escuchar cuando el admin cierre el toast
+        newToast.addEventListener('hidden.bs.toast', () => {
+            alertSound.pause(); // Detener el bucle
+            alertSound.currentTime = 0; // Reiniciar el audio
+            newToast.remove(); // Limpiar el toast del DOM
+        }, { once: true }); // Solo ejecutar una vez
+
         bsToast.show();
+        
+        // Reproducir sonido (ahora en bucle)
+        alertSound.play().catch(e => console.error("Error al reproducir sonido:", e));
+        
       } else {
         console.error("Bootstrap no está cargado, no se puede mostrar el toast.");
       }
   }
 
-  // 3. Función de Polling (preguntar al servidor)
   async function checkForNewAlerts() {
       try {
           const response = await fetch(`/api/alertas/nuevas?desde_id=${lastSeenAlertId}`);
@@ -304,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
               nuevasAlertas.forEach(alerta => {
                   console.log("Nueva alerta crítica recibida:", alerta);
                   showToast(alerta);
-                  // Actualizar el ID de la última alerta vista
                   lastSeenAlertId = alerta.id; 
               });
           }
@@ -312,13 +335,28 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error("Error en polling de alertas:", error);
       }
   }
-
-  // 4. Iniciar el bucle de polling (preguntar cada 5 segundos)
   setInterval(checkForNewAlerts, 5000); 
-
   console.log("Polling de notificaciones iniciado. Último ID visto:", lastSeenAlertId);
-  // --- FIN: Lógica de Notificaciones Push ---
   
+
+  // --- Lógica del Reloj ---
+  const clockTimeEl = document.getElementById('clock-time');
+  const clockDateEl = document.getElementById('clock-date');
+  
+  function updateClock() {
+      const now = new Date();
+      // Usar 'es-GT' (Español Guatemala) para el formato de fecha
+      const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const dateStr = now.toLocaleDateString('es-GT', dateOptions);
+      
+      if(clockTimeEl) clockTimeEl.innerText = timeStr;
+      if(clockDateEl) clockDateEl.innerText = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  }
+  
+  setInterval(updateClock, 1000); // Actualiza cada segundo
+  updateClock(); // Llama una vez al inicio
+
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

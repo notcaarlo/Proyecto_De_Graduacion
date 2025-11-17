@@ -1,3 +1,115 @@
-/* ===== DASHBOARD ADMIN ===== */
-.metric .value{ font-size:2rem; font-weight:700; }
-.metric .caption{ color:var(--muted); }
+/* =================================== */
+/* === NUEVO LAYOUT DE 3 COLUMNAS === */
+/* =================================== */
+
+/* Reseteo básico y tema oscuro */
+body, html {
+  height: 100%;
+  overflow: hidden; /* Evitar scroll en el body */
+  background-color: #0b0f14; /* Color de fondo base */
+  color: #e5e7eb;
+}
+
+/* Contenedor principal Flex */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* 1. Sidebar (Izquierda) */
+.dashboard-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background-color: #0f131a; /* Un poco más claro que el fondo */
+  padding: 1.5rem;
+  border-right: 1px solid #1f2937;
+  display: flex;
+  flex-direction: column;
+}
+.dashboard-sidebar h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #facc15; /* Acento amarillo */
+  margin-bottom: 1.5rem;
+}
+.sidebar-nav .card-clean {
+  transition: all 0.2s ease-in-out;
+}
+.sidebar-nav .card-clean:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(250, 204, 21, 0.1);
+  border-color: #facc15;
+}
+
+/* 2. Contenido Principal (Centro) */
+.dashboard-main {
+  flex-grow: 1;
+  overflow-y: auto; /* Scroll SÓLO para esta columna */
+  padding: 1.5rem 2rem;
+}
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+/* 3. Barra de Widgets (Derecha) */
+.dashboard-widgets {
+  width: 320px;
+  flex-shrink: 0;
+  background-color: #0f131a;
+  padding: 1.5rem;
+  border-left: 1px solid #1f2937;
+  overflow-y: auto; /* Scroll SÓLO para esta columna */
+}
+
+/* Estilo del Reloj */
+.widget-clock {
+  background-color: #1a1e25;
+  border-radius: 0.625rem;
+  padding: 1.25rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.widget-clock .time {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #facc15;
+  letter-spacing: 2px;
+}
+.widget-clock .date {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+/* Estilos para las tablas en la barra de widgets */
+.widget-table .block {
+  height: 300px; /* Altura fija para las tablas */
+}
+.widget-table .block-body {
+  height: calc(100% - 40px); /* Restar altura del header */
+  overflow-y: auto;
+}
+
+/* Ajustes a los componentes existentes */
+.block-header {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+}
+.metric .value {
+  color: #facc15;
+}
+.btn-logout-sidebar {
+  margin-top: auto; /* Empuja el botón al fondo */
+}
+
+/* Colores de Alerta (del código anterior) */
+.nivel-bajo { background: #10b981; }
+.nivel-medio { background: #f59e0b; }
+.nivel-alto { background: #991b1b; color: #fff; }
+.nivel-critico { background: #dc2626; color: #fff; }
