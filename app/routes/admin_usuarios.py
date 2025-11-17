@@ -1,12 +1,15 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
+from flask import jsonify, current_app 
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from sqlalchemy import func
+from sqlalchemy import func, desc 
 from database.conexion import db
 from app.models import Usuario, Alerta, SesionConduccion, Vehiculo
 import pandas as pd
 import io
+import requests 
 from datetime import datetime
+
 admin_usuarios_bp = Blueprint('admin_usuarios', __name__)
 
 def _solo_admin():
@@ -84,6 +87,7 @@ def toggle_estado(id):
     flash(f'Usuario {u.username} {estado_txt}.', 'success')
     return redirect(url_for('admin_usuarios.listar_usuarios'))
 
+
 @admin_usuarios_bp.route('/dashboard/usuarios/<int:id>', methods=['GET'])
 @login_required
 def ver_usuario(id):
@@ -136,25 +140,21 @@ def ver_usuario(id):
         niveles=niveles,
         ultimas_alertas=ultimas_alertas
     )
-
-# ================EXPORTACION EXCEL===============================
+    
 @admin_usuarios_bp.route('/dashboard/usuarios/<int:id>/exportar_excel')
 @login_required
 def exportar_excel(id):
     if not _solo_admin():
         return redirect(url_for('web_login.perfil_redirect'))
-
     try:
         u = Usuario.query.get_or_404(id)
-
+        # ... (código de excel omitido por brevedad) ...
         # Total de sesiones
         total_sesiones = db.session.query(func.count(SesionConduccion.id)) \
             .filter(SesionConduccion.id_usuario == u.id).scalar() or 0
-
         # Total de alertas
         total_alertas = db.session.query(func.count(Alerta.id)) \
             .filter(Alerta.id_usuario == u.id).scalar() or 0
-
         # Vehículos más usados por el conductor
         vehiculos_top = (
             db.session.query(Vehiculo.codigo, func.count(SesionConduccion.id))
@@ -172,17 +172,14 @@ def exportar_excel(id):
             .all()
         )
         niveles = {(nivel or 'N/A').lower(): count for nivel, count in nivel_counts}
-
         # Últimas alertas registradas
         todas_las_alertas = (
             Alerta.query.filter_by(id_usuario=u.id)
             .order_by(Alerta.id.desc())
             .all()
         )
-
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            
             # Pestaña 1: Resumen
             df_resumen = pd.DataFrame([
                 ("Usuario", u.nombre),
@@ -191,21 +188,18 @@ def exportar_excel(id):
                 ("Total de Alertas", total_alertas)
             ], columns=["Métrica", "Valor"])
             df_resumen.to_excel(writer, sheet_name='Resumen', index=False)
-
             # Pestaña 2: Alertas por Nivel
             if niveles:
                 df_niveles = pd.DataFrame(list(niveles.items()), columns=['Nivel', 'Cantidad'])
             else:
                 df_niveles = pd.DataFrame(columns=['Nivel', 'Cantidad'])
             df_niveles.to_excel(writer, sheet_name='Alertas por Nivel', index=False)
-
             # Pestaña 3: Vehículos Usados
             if vehiculos_top:
                 df_vehiculos = pd.DataFrame(vehiculos_top, columns=['Vehículo', 'Sesiones'])
             else:
                 df_vehiculos = pd.DataFrame(columns=['Vehículo', 'Sesiones'])
             df_vehiculos.to_excel(writer, sheet_name='Vehículos Usados', index=False)
-
             # Pestaña 4: Historial de Alertas
             if todas_las_alertas:
                 alertas_data = [
@@ -227,14 +221,130 @@ def exportar_excel(id):
         output.seek(0)
         fecha_hoy = datetime.now().strftime('%Y-%m-%d')
         filename = f"reporte_usuario_{u.username}_{fecha_hoy}.xlsx"
-
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
             download_name=filename
         )
-
     except Exception as e:
         flash(f'Error al generar el archivo Excel: {e}', 'danger')
         return redirect(url_for('admin_usuarios.ver_usuario', id=id))
+
+def _call_gemini_api(prompt_text):
+    """
+    Llama a la API REST de Gemini. No usa la librería de Python para evitar conflictos.
+    """
+    api_key = current_app.config.get('GEMINI_API_KEY')
+    if not api_key:
+        return "Error: GEMINI_API_KEY no está configurada en el servidor."
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent?key={api_key}"
+    
+    headers = {"Content-Type": "application/json"}
+    
+    data = {
+        "contents": [{
+            "parts": [{"text": prompt_text}]
+        }]
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=20)
+        response.raise_for_status() # Lanza un error si la respuesta es 4xx o 5xx
+        
+        # Extraer el texto de la respuesta
+        result = response.json()
+        return result['candidates'][0]['content']['parts'][0]['text']
+        
+    except requests.exceptions.RequestException as e:
+        print(f"[Gemini API] Error en la solicitud: {e}")
+        return f"Error al contactar la API de Gemini: {e}"
+    except (KeyError, IndexError) as e:
+        print(f"[Gemini API] Error al parsear la respuesta: {e}")
+        print(f"[Gemini API] Respuesta recibida: {response.text}")
+        return "Error: La API de IA devolvió una respuesta inesperada."
+
+
+@admin_usuarios_bp.route('/api/usuario/<int:id>/generar_recomendacion', methods=['GET'])
+@login_required
+def generar_recomendacion(id):
+    if not _solo_admin():
+        return jsonify({"error": "No autorizado"}), 403
+
+    u = Usuario.query.get_or_404(id)
+    
+    # Métricas de tarjetas
+    total_sesiones = db.session.query(func.count(SesionConduccion.id)) \
+        .filter(SesionConduccion.id_usuario == u.id).scalar() or 0
+    total_alertas = db.session.query(func.count(Alerta.id)) \
+        .filter(Alerta.id_usuario == u.id).scalar() or 0
+
+    # Alertas por nivel
+    nivel_counts = (
+        db.session.query(Alerta.nivel_somnolencia, func.count(Alerta.id))
+        .filter(Alerta.id_usuario == u.id)
+        .group_by(Alerta.nivel_somnolencia)
+        .all()
+    )
+    # Convertir a un string legible
+    niveles_str = ", ".join([f"{count} {nivel}" for nivel, count in nivel_counts]) or "Ninguna"
+
+    # Alertas por hora (similar a dashboard.py, pero para un usuario)
+    hora_col = func.extract('hour', Alerta.hora)
+    alertas_por_hora_db = (
+        db.session.query(
+            hora_col.label('hora'), 
+            func.count(Alerta.id).label('cantidad')
+        )
+        .filter(Alerta.id_usuario == u.id)
+        .group_by(hora_col)
+        .order_by(desc('cantidad'))
+        .limit(3) # Top 3 horas de mayor riesgo
+        .all()
+    )
+    horas_riesgo_str = ", ".join([f"{int(h.cantidad)} alertas a las {int(h.hora):02d}:00" for h in alertas_por_hora_db]) or "Sin patrón claro"
+
+    # Tasa de Riesgo (Alertas por Hora)
+    total_horas = (
+        db.session.query(
+            (func.sum(
+                func.extract('epoch', func.coalesce(SesionConduccion.fecha_fin, func.now())) - 
+                func.extract('epoch', SesionConduccion.fecha_inicio)
+            ) / 3600.0)
+        )
+        .filter(SesionConduccion.id_usuario == u.id)
+        .scalar() or 0.0
+    )
+    tasa_riesgo = (total_alertas / total_horas) if total_horas > 0 else 0
+    
+    # --- Prompt ---
+    prompt = f"""
+    Eres un analista experto en seguridad de flotas de transporte pesado.
+    Tu trabajo es analizar los datos de un conductor y generar una recomendación clara y accionable para un administrador.
+    
+    Responde en español y usa Markdown para formatear tu respuesta. 
+    Tu respuesta debe ser un análisis profesional en 3 secciones:
+    1.  **Diagnóstico General:** Un resumen del perfil de riesgo del conductor.
+    2.  **Puntos Clave de Riesgo:** 2 o 3 viñetas identificando los patrones peligrosos.
+    3.  **Recomendación Accionable:** 1 o 2 acciones claras que el administrador debe tomar.
+
+    Aquí están los datos del conductor '{u.nombre}':
+
+    --- DATOS DE RENDIMIENTO ---
+    - Tasa de Riesgo (Alertas por Hora): {tasa_riesgo:.2f}
+    - Total de Jornadas Conducidas: {total_sesiones}
+    - Total de Alertas Acumuladas: {total_alertas}
+    - Desglose de Alertas por Nivel: {niveles_str}
+    - Horas de Mayor Riesgo (Patrones): {horas_riesgo_str}
+    --- FIN DE DATOS ---
+
+    Genera el análisis.
+    """
+
+    # --- 3. Llamar a la API y devolver la respuesta ---
+    try:
+        recomendacion = _call_gemini_api(prompt)
+        return jsonify({'recomendacion': recomendacion})
+    except Exception as e:
+        return jsonify({"error": f"Error al generar la recomendación: {e}"}), 500

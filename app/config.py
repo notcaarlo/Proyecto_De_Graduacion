@@ -18,3 +18,5 @@ class Config:
     
     ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
     UPLOAD_FOLDER = os.path.join(basedir, 'static/evidencia')
+
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')

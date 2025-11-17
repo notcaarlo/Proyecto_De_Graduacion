@@ -20,15 +20,13 @@
     .nivel-critico { background: #dc2626; color: #fff; }
   </style>
 </head>
-<body>
-
+<body data-last-alert-id="{{ last_seen_alert_id }}">
 <a href="{{ url_for('web_login.logout') }}" class="btn btn-danger-dark btn-soft btn-logout">Cerrar sesión</a>
 
 <div class="container py-4 container-narrow">
   
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 m-0">Panel de administración</h1>
-    
     <div class="btn-group" role="group">
       <a href="{{ url_for('dashboard.dashboard', rango='todo') }}" 
          class="btn btn-sm {{ 'btn-primary-dark' if rango_activo == 'todo' else 'btn-outline-secondary' }}">Todo</a>
@@ -173,6 +171,7 @@
                             <tr>
                                 <td>{{ conductor }}</td>
                                 <td>{{ vehiculo }}</td>
+                            </tr>
                             {% else %}
                             <tr>
                                 <td colspan="3" class="text-center py-4">No hay jornadas activas.</td>
@@ -186,8 +185,22 @@
     </div>
   </div>
 
-  </div>
-
+</div> <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="toast-template" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
+        <div class="toast-header bg-danger text-white">
+            <strong class="me-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle-fill me-2" viewBox="0 0 16 16">
+                  <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                </svg>
+                Alerta Crítica
+            </strong>
+            <small class="toast-time">Justo ahora</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" style="background-color: #212529; color: white;">
+            </div>
+    </div>
+</div>
 <script id="dashboard-data" type="application/json">
   {
     "horas_labels": {{ horas_labels|tojson|safe }},
@@ -196,7 +209,6 @@
     "riesgo_data": {{ riesgo_data|tojson|safe }}
   }
 </script>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   Chart.defaults.color = '#e5e7eb';
@@ -221,16 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       options: {
         responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: true }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { stepSize: 1 }
-          }
-        }
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
       }
     });
   }
@@ -252,18 +256,69 @@ document.addEventListener('DOMContentLoaded', () => {
       options: {
         indexAxis: 'y',
         responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: true }
-        },
-        scales: {
-          x: {
-            beginAtZero: true
-          }
-        }
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: { x: { beginAtZero: true } }
       }
     });
   }
+
+  // =========================================================
+  // === INICIO: NUEVO SCRIPT DE NOTIFICACIONES PUSH ===
+  // =========================================================
+  
+  // 1. Obtener el ID de la última alerta que el servidor nos envió
+  let lastSeenAlertId = parseInt(document.body.dataset.lastAlertId || '0', 10);
+  const toastContainer = document.querySelector('.toast-container');
+  const toastTemplate = document.getElementById('toast-template');
+
+  // 2. Función para mostrar el Toast
+  function showToast(alerta) {
+      if (!toastTemplate) return; // Salir si la plantilla no existe
+      
+      const newToast = toastTemplate.cloneNode(true);
+      newToast.removeAttribute('id'); // Quitar el ID de la plantilla
+      
+      const toastBody = newToast.querySelector('.toast-body');
+      toastBody.innerHTML = `<strong>${alerta.conductor} (${alerta.hora}):</strong><br>${alerta.nota}`;
+      
+      toastContainer.appendChild(newToast);
+      
+      // Asegurarse de que Bootstrap esté cargado
+      if (typeof bootstrap !== 'undefined') {
+        const bsToast = new bootstrap.Toast(newToast);
+        bsToast.show();
+      } else {
+        console.error("Bootstrap no está cargado, no se puede mostrar el toast.");
+      }
+  }
+
+  // 3. Función de Polling (preguntar al servidor)
+  async function checkForNewAlerts() {
+      try {
+          const response = await fetch(`/api/alertas/nuevas?desde_id=${lastSeenAlertId}`);
+          if (!response.ok) return;
+
+          const nuevasAlertas = await response.json();
+          
+          if (nuevasAlertas.length > 0) {
+              nuevasAlertas.forEach(alerta => {
+                  console.log("Nueva alerta crítica recibida:", alerta);
+                  showToast(alerta);
+                  // Actualizar el ID de la última alerta vista
+                  lastSeenAlertId = alerta.id; 
+              });
+          }
+      } catch (error) {
+          console.error("Error en polling de alertas:", error);
+      }
+  }
+
+  // 4. Iniciar el bucle de polling (preguntar cada 5 segundos)
+  setInterval(checkForNewAlerts, 5000); 
+
+  console.log("Polling de notificaciones iniciado. Último ID visto:", lastSeenAlertId);
+  // --- FIN: Lógica de Notificaciones Push ---
+  
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

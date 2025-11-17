@@ -13,27 +13,20 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin.css') }}">
 
-  <!-- Colores para los niveles -->
   <style>
-    .nivel-bajo {
-      background: #10b981;
-    }
-
-    /* verde */
-    .nivel-medio {
-      background: #f59e0b;
-    }
-
-    /* naranja */
-    .nivel-alto {
-      background: #991b1b;
-      color: #fff;
-    }
-
-    /* rojo oscuro */
-    .nivel-critico {
-      background: #dc2626;
-      color: #fff;
+    .nivel-bajo { background: #10b981; }
+    .nivel-medio { background: #f59e0b; }
+    .nivel-alto { background: #991b1b; color: #fff; }
+    .nivel-critico { background: #dc2626; color: #fff; }
+    
+    #ia-recomendacion-texto { min-height: 150px; }
+    #ia-recomendacion-texto ul { padding-left: 20px; }
+    #ia-recomendacion-texto strong { color: #facc15; }
+    
+    /* --- NUEVO: Altura fija para el gráfico para que coincida con el bloque de IA --- */
+    #chart-container {
+      position: relative;
+      height: 300px; /* Ajusta esta altura si es necesario */
     }
   </style>
 </head>
@@ -49,15 +42,14 @@
       <div class="d-flex gap-2">
         <a href="{{ url_for('admin_usuarios.listar_usuarios') }}" class="btn btn-outline-light btn-soft">← Volver</a>
         <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary btn-soft">Dashboard</a>
-        
         <a href="{{ url_for('admin_usuarios.exportar_excel', id=user.id) }}" class="btn btn-outline-success btn-soft">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-spreadsheet-fill" viewBox="0 0 16 16" style="margin-top: -3px; margin-right: 2px;">
-                <path d="M6 12v-2h3v2H6z"/>
-                <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zM3 9h10v1h-3v2h3v1h-3v2H3v-2h3v-1H3V9z"/>
-            </svg>
-            Exportar Excel
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-spreadsheet-fill" viewBox="0 0 16 16" style="margin-top: -3px; margin-right: 2px;">
+            <path d="M6 12v-2h3v2H6z"/>
+            <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zM3 9h10v1h-3v2h3v1h-3v2H3v-2h3v-1H3V9z"/>
+          </svg>
+          Exportar Excel
         </a>
-        </div>
+      </div>
     </div>
 
     <div class="row g-3 mb-4">
@@ -80,12 +72,7 @@
             {% for nivel, cnt in niveles.items() %}
             <span class="badge badge-nivel me-1
             {% set n = (nivel or '')|lower %}
-            {{ 
-              'nivel-bajo' if n=='bajo' else 
-              ('nivel-medio' if n=='medio' else 
-              ('nivel-alto' if n=='alto' else 
-              ('nivel-critico' if n=='critico' else ''))) 
-            }}
+            {{ 'nivel-bajo' if n=='bajo' else ('nivel-medio' if n=='medio' else ('nivel-alto' if n=='alto' else ('nivel-critico' if n=='critico' else ''))) }}
            ">{{ nivel|capitalize }}: {{ cnt }}</span>
             {% else %}
             <span class="text-muted-2">—</span>
@@ -121,7 +108,7 @@
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
       </div>
       <div class="col-lg-6">
         <div class="block">
@@ -159,33 +146,58 @@
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
       </div>
+    </div>
 
-      <!-- Gráfica circular de alertas -->
-      <div class="col-12">
+    <div class="row g-3 mt-3">
+      
+      <div class="col-lg-6">
         <div class="block">
           <div class="block-header"><strong>Distribución de alertas por nivel</strong></div>
           <div class="block-body">
-            <canvas id="chartAlertasNivel" height="120"></canvas>
+            <div id="chart-container">
+              <canvas id="chartAlertasNivel"></canvas>
+            </div>
           </div>
         </div>
       </div>
+      
+      <div class="col-lg-6">
+        <div class="block">
+          <div class="block-header d-flex justify-content-between align-items-center">
+            <strong>Análisis y Recomendación (IA)</strong>
+            <button class="btn btn-outline-info btn-sm" id="btn-refresh-ia">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16" style="margin-top: -3px;">
+                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+              </svg>
+              Refrescar
+            </button>
+          </div>
+          <div class="block-body">
+            <div id="ia-recomendacion-texto" class="text-muted-2" data-id="{{ user.id }}">
+              <div id="ia-loading-spinner" class="d-flex justify-content-center align-items-center" style="min-height: 150px;">
+                <div class="spinner-border text-info" role="status">
+                  <span class="visually-hidden">Generando análisis...</span>
+                </div>
+                <span class="ms-3">Generando análisis...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
     </div>
-  </div>
+    </div>
 
-  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <script id="niveles-data" type="application/json">
-  {{ niveles|tojson|safe }}
-</script>
-
+  
+  <script id="niveles-data" type="application/json">{{ niveles|tojson|safe }}</script>
   <script>
     const nivelesDataElement = document.getElementById('niveles-data');
     const niveles = JSON.parse(nivelesDataElement.textContent);
-
     const labels = Object.keys(niveles);
     const valores = Object.values(niveles);
 
@@ -218,17 +230,62 @@
           }]
         },
         options: {
+          // --- MODIFICADO: Mantenemos el aspect ratio ---
           responsive: true,
+          maintainAspectRatio: false, // <-- Esto permite que llene el div (controlado por CSS)
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { color: '#e5e7eb', boxWidth: 20 }
-            },
+            legend: { position: 'bottom', labels: { color: '#e5e7eb', boxWidth: 20 } },
             tooltip: { enabled: true }
           }
         }
       });
     }
   </script>
-</body>
+
+  <script>
+    (function() {
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        script.onload = function() {
+            iniciarLogicaIA();
+        };
+        document.head.appendChild(script);
+    })();
+
+    function iniciarLogicaIA() {
+      const btnRefresh = document.getElementById('btn-refresh-ia');
+      const textoContainer = document.getElementById('ia-recomendacion-texto');
+      const loadingSpinner = document.getElementById('ia-loading-spinner');
+      const idUsuario = textoContainer.dataset.id;
+
+      async function fetchRecomendacion() {
+        loadingSpinner.style.display = 'flex';
+        textoContainer.innerHTML = ''; 
+        textoContainer.appendChild(loadingSpinner);
+        btnRefresh.disabled = true;
+
+        try {
+          const response = await fetch(`/api/usuario/${idUsuario}/generar_recomendacion`);
+          
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || `Error ${response.status}`);
+          }
+          const data = await response.json();
+          const htmlRecomendacion = marked.parse(data.recomendacion);
+          textoContainer.innerHTML = htmlRecomendacion;
+
+        } catch (error) {
+          console.error("Error al cargar recomendación:", error);
+          textoContainer.innerHTML = `<p class="text-danger">Error al generar la recomendación: ${error.message}</p>`;
+        } finally {
+          loadingSpinner.style.display = 'none';
+          btnRefresh.disabled = false;
+        }
+      }
+      document.addEventListener('DOMContentLoaded', fetchRecomendacion);
+      btnRefresh.addEventListener('click', fetchRecomendacion);
+    }
+  </script>
+  </body>
 </html>
